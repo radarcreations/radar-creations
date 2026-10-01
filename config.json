@@ -1,0 +1,44 @@
+{
+  "brand": "Radar Créations",
+  "site_url": "",
+  "contact_email": "huet.jonas28@gmail.com",
+  "sender_email": "",
+  "reply_to": "",
+  "stripe_portal_url": "",
+  "trial_days": 7,
+  "plans": [
+    {
+      "id": "un-departement",
+      "name": "1 département",
+      "price": 19,
+      "max_departements": 1,
+      "payment_link": "",
+      "features": ["Alerte chaque jour de parution", "Fichier Excel (CSV) joint", "Tous les secteurs"]
+    },
+    {
+      "id": "trois-departements",
+      "name": "3 départements",
+      "price": 39,
+      "max_departements": 3,
+      "payment_link": "",
+      "features": ["Jusqu'à 3 départements", "Alerte chaque jour de parution", "Fichier Excel (CSV) joint"]
+    },
+    {
+      "id": "france",
+      "name": "France entière",
+      "price": 79,
+      "max_departements": 101,
+      "payment_link": "",
+      "features": ["Les 101 départements", "Environ 600 à 700 sociétés par jour", "Fichier Excel (CSV) joint"]
+    }
+  ],
+  "legal": {
+    "publisher": "Jonas Huet (Radar Créations)",
+    "status": "Entrepreneur individuel, micro-entreprise — en cours d'immatriculation",
+    "siret": "en attente d'attribution",
+    "address": "À COMPLÉTER",
+    "director": "Jonas Huet",
+    "host": "GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis (GitHub Pages)",
+    "vat_note": "TVA non applicable, article 293 B du CGI."
+  }
+}

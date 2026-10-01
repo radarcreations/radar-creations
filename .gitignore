@@ -1,0 +1,6 @@
+out/
+dist/
+__pycache__/
+*.pyc
+subscribers.local.json
+.env

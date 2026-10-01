@@ -1,0 +1,5 @@
+[
+  {"email": "test-gironde@example.com", "departements": "33", "max": 1},
+  {"email": "test-trois@example.com", "departements": "Paris, 92 et Rhône", "max": 3},
+  {"email": "test-france@example.com", "departements": "France", "max": 101}
+]
