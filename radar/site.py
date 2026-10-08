@@ -3,6 +3,7 @@ import datetime as dt
 import html
 import json
 import os
+import re
 import shutil
 import unicodedata
 
@@ -22,6 +23,50 @@ def slug(text):
 
 def dep_path(code):
     return f"creations/{code.lower()}-{slug(DEPARTEMENTS[code])}/"
+
+
+# Grandes villes avec une page dédiée (Paris a déjà la page du département 75).
+VILLES = [
+    ("Marseille", "13"), ("Lyon", "69"), ("Toulouse", "31"), ("Nice", "06"), ("Nantes", "44"),
+    ("Montpellier", "34"), ("Strasbourg", "67"), ("Bordeaux", "33"), ("Lille", "59"), ("Rennes", "35"),
+    ("Reims", "51"), ("Toulon", "83"), ("Saint-Étienne", "42"), ("Le Havre", "76"), ("Grenoble", "38"),
+    ("Dijon", "21"), ("Angers", "49"), ("Nîmes", "30"), ("Villeurbanne", "69"), ("Clermont-Ferrand", "63"),
+    ("Le Mans", "72"), ("Aix-en-Provence", "13"), ("Brest", "29"), ("Tours", "37"), ("Amiens", "80"),
+    ("Limoges", "87"), ("Annecy", "74"), ("Perpignan", "66"), ("Boulogne-Billancourt", "92"), ("Metz", "57"),
+    ("Besançon", "25"), ("Orléans", "45"), ("Rouen", "76"), ("Mulhouse", "68"), ("Caen", "14"),
+    ("Nancy", "54"), ("Argenteuil", "95"), ("Montreuil", "93"), ("Saint-Denis", "93"), ("Roubaix", "59"),
+    ("Avignon", "84"), ("Versailles", "78"), ("Nanterre", "92"), ("Courbevoie", "92"), ("Neuilly-sur-Seine", "92"),
+    ("Levallois-Perret", "92"), ("Cannes", "06"), ("Antibes", "06"), ("Pau", "64"), ("Bayonne", "64"),
+    ("La Rochelle", "17"), ("Poitiers", "86"), ("Ajaccio", "2A"), ("Bastia", "2B"), ("Saint-Denis", "974"),
+    ("Saint-Paul", "974"), ("Fort-de-France", "972"), ("Pointe-à-Pitre", "971"),
+]
+
+# Pages secteur : titre, et à qui ces nouvelles sociétés intéressent.
+SECTEUR_PAGES = {
+    "immobilier": ("Nouvelles SCI et sociétés immobilières", "notaires, gestionnaires de biens, banques, assureurs et experts-comptables"),
+    "holding": ("Nouvelles holdings", "experts-comptables, avocats d'affaires, banques privées et conseillers en gestion de patrimoine"),
+    "btp": ("Nouvelles entreprises du BTP", "assureurs (décennale), négoces de matériaux, loueurs d'engins et experts-comptables"),
+    "restauration": ("Nouveaux restaurants, boulangeries et traiteurs", "grossistes alimentaires, brasseurs, fournisseurs de caisses et assureurs"),
+    "sante": ("Nouvelles sociétés santé, beauté et bien-être", "fournisseurs de matériel, éditeurs de logiciels de rendez-vous et assureurs"),
+    "numerique": ("Nouvelles sociétés informatiques et numériques", "hébergeurs, éditeurs de logiciels, cabinets de recrutement et experts-comptables"),
+    "transport": ("Nouvelles sociétés de transport et logistique", "loueurs de véhicules, assureurs flotte, fournisseurs de carburant et de télématique"),
+    "conseil": ("Nouvelles sociétés de conseil et services aux entreprises", "espaces de coworking, banques, assureurs RC pro et experts-comptables"),
+    "commerce": ("Nouveaux commerces et sociétés de négoce", "grossistes, transporteurs, agences web et fournisseurs de terminaux de paiement"),
+}
+
+
+def ville_key(ville):
+    """« MARSEILLE 8E ARRONDISSEMENT » → « marseille », pour regrouper les arrondissements."""
+    v = re.sub(r"\s+\d+\s*(er|e|ème)?\s+arrondissement$", "", (ville or "").strip().lower())
+    return slug(v)
+
+
+def ville_path(name, dep):
+    return f"villes/{slug(name)}-{dep.lower()}/"
+
+
+def secteur_path(key):
+    return f"secteurs/{key}/"
 
 
 def date_fr(iso):
@@ -113,11 +158,34 @@ def company_rows(rows, limit=None):
     return "".join(out)
 
 
-def build(config, rows_by_day, out_dir, assets_dir=None):
+def stats_html(rows):
+    counts = {}
+    for r in rows:
+        counts[r["secteur"]] = counts.get(r["secteur"], 0) + 1
+    cards = "".join(f'<div class="card"><div class="stat">{n}</div><p>{E(SECTEUR_LABELS[k])}</p></div>'
+                    for k, n in sorted(counts.items(), key=lambda kv: -kv[1])[:6])
+    return f'<div class="grid">{cards}</div>' if cards else ""
+
+
+def explore_html(root):
+    """Liens vers les pages secteurs et villes (maillage interne pour Google)."""
+    sect = "".join(f'<div><a href="{root}{secteur_path(k)}index.html">{E(t)}</a></div>' for k, (t, _) in SECTEUR_PAGES.items())
+    villes = "".join(f'<div><a href="{root}{ville_path(n, c)}index.html">{E(n)}</a> <span>{c}</span></div>' for n, c in VILLES)
+    return (f'<section><h2>Par secteur</h2><div class="deps">{sect}</div></section>'
+            f'<section><h2>Grandes villes</h2><div class="deps">{villes}</div></section>')
+
+
+def build(config, rows_by_day, out_dir, assets_dir=None, recent_days=8):
+    """Pages département et secteur : les `recent_days` derniers jours. Pages ville : toute la période fournie
+    (un mois), pour qu'elles ne soient pas presque vides dans les villes moyennes."""
     if os.path.isdir(out_dir):
         shutil.rmtree(out_dir)
     os.makedirs(out_dir)
-    days = sorted(d for d, rows in rows_by_day.items() if rows)
+    long_days = sorted(d for d, rows in rows_by_day.items() if rows)
+    long_rows = [r for d in long_days for r in rows_by_day[d]]
+    long_period = f"du {date_fr(long_days[0].isoformat())} au {date_fr(long_days[-1].isoformat())}" if long_days else ""
+    cutoff = max(rows_by_day) - dt.timedelta(days=recent_days - 1) if rows_by_day else None
+    days = [d for d in long_days if d >= cutoff]
     all_rows = [r for d in days for r in rows_by_day[d]]
     last = days[-1].isoformat() if days else dt.date.today().isoformat()
     period = f"du {date_fr(days[0].isoformat())} au {date_fr(last)}" if days else ""
@@ -157,6 +225,7 @@ triées par secteur, avec leur adresse et un fichier Excel prêt pour votre pros
 <div class="card"><h3>3. Prospectez</h3><p>Dénomination, forme, capital, activité, adresse du siège, SIREN, liens vers la fiche officielle, et un fichier CSV pour Excel.</p></div>
 </div></section>
 <section id="tarifs"><h2>Tarifs</h2>{plans_html(config)}</section>
+{explore_html("")}
 <section><h2>Questions fréquentes</h2>
 <details><summary>D'où viennent les données ?</summary><p>Du BODACC, le Bulletin officiel des annonces civiles et commerciales, où chaque immatriculation de société est publiée. Ces données publiques sont réutilisables sous Licence Ouverte. Nous les récupérons chaque jour, les trions par département et par secteur, et vous les envoyons.</p></details>
 <details><summary>Pourquoi pas les auto-entrepreneurs ?</summary><p>Les entrepreneurs individuels sont des personnes physiques : nous ne diffusons pas leurs données. L'alerte contient uniquement des sociétés (SAS, SARL, SCI, etc.).</p></details>
@@ -175,6 +244,7 @@ triées par secteur, avec leur adresse et un fichier Excel prêt pour votre pros
     body = f"""<div class="hero"><h1>Créations de sociétés par département</h1>
 <p class="lead">Les sociétés immatriculées et publiées au BODACC {E(period)}, département par département. Mis à jour chaque jour.</p></div>
 <div class="deps">{items}</div>
+{explore_html("../")}
 <div class="cta"><b>Recevez celles de votre département chaque matin.</b> <a href="../index.html#tarifs">Voir les tarifs</a></div>"""
     write("creations/index.html", page(config, "creations/", "Créations de sociétés par département, cette semaine",
                                        "Liste des sociétés créées cette semaine dans chaque département, d'après le BODACC. "
@@ -189,18 +259,70 @@ triées par secteur, avec leur adresse et un fichier Excel prêt pour votre pros
         stats = "".join(f'<div class="card"><div class="stat">{n}</div><p>{E(SECTEUR_LABELS[k])}</p></div>'
                         for k, n in sorted(counts.items(), key=lambda kv: -kv[1])[:6])
         listing = company_rows(rows) if rows else "<p>Aucune société publiée cette semaine dans ce département.</p>"
+        villes = [n for n, c in VILLES if c == code]
+        villes_links = (f'<p class="note">Par ville : ' + ", ".join(
+            f'<a href="../../{ville_path(n, code)}index.html">{E(n)}</a>' for n in villes) + "</p>") if villes else ""
         body = f"""<div class="hero"><h1>Nouvelles sociétés : {E(name)} ({code})</h1>
 <p class="lead">{len(rows)} société{'s' if len(rows) != 1 else ''} créée{'s' if len(rows) != 1 else ''} et publiée{'s' if len(rows) != 1 else ''} au BODACC {E(period)}.</p>
 <a class="btn" href="../../index.html#tarifs">Les recevoir chaque matin</a>
 <p class="note">L'alerte par e-mail ajoute l'adresse complète du siège, le capital, le SIREN et un fichier Excel.</p></div>
 {f'<div class="grid">{stats}</div>' if stats else ''}
-<section><h2>Liste de la semaine</h2>{listing}</section>
+{villes_links}<section><h2>Liste de la semaine</h2>{listing}</section>
 <div class="cta"><b>Ne ratez plus aucune création en {E(name)}.</b> Un e-mail chaque jour de parution, résiliable en un clic.
 <br><br><a class="btn" href="../../index.html#tarifs">Essayer {config['trial_days']} jours gratuits</a></div>"""
         write(dep_path(code) + "index.html", page(
             config, dep_path(code), f"Nouvelles sociétés créées en {name} ({code}) cette semaine",
             f"{len(rows)} sociétés créées en {name} ({code}) {period} : SAS, SARL, SCI… Liste mise à jour chaque jour "
             f"d'après le BODACC.", body, 2))
+
+    # -------- une page par grande ville
+    by_ville = {}
+    for r in long_rows:
+        by_ville.setdefault((ville_key(r["ville"]), r["departement"]), []).append(r)
+    for name, code in VILLES:
+        rows = sorted(by_ville.get((slug(name), code), []), key=lambda r: (r["date_parution"], r["nom"]), reverse=True)
+        dep_name = DEPARTEMENTS[code]
+        listing = company_rows(rows) if rows else f"<p>Aucune société publiée ce mois-ci à {E(name)}.</p>"
+        n = len(rows)
+        s_ = "s" if n != 1 else ""
+        body = f"""<div class="hero"><h1>Nouvelles sociétés à {E(name)}</h1>
+<p class="lead">{n} société{s_} créée{s_} à {E(name)} et publiée{s_} au BODACC {E(long_period)} : SAS, SARL, SCI…</p>
+<a class="btn" href="../../index.html#tarifs">Recevoir celles du département chaque matin</a>
+<p class="note">L'alerte couvre tout le département {E(dep_name)} ({code}) : <a href="../../{dep_path(code)}index.html">voir la page du département</a>.</p></div>
+{stats_html(rows)}
+<section><h2>Sociétés créées à {E(name)} ces 30 derniers jours</h2>{listing}</section>
+<div class="cta"><b>Ne ratez plus aucune création à {E(name)} et en {E(dep_name)}.</b> Un e-mail chaque jour de parution, avec un fichier Excel.
+<br><br><a class="btn" href="../../index.html#tarifs">Essayer {config['trial_days']} jours gratuits</a></div>"""
+        write(ville_path(name, code) + "index.html", page(
+            config, ville_path(name, code), f"Nouvelles sociétés à {name} ({code}) : les créations du mois",
+            f"{n} sociétés créées à {name} {long_period}. Liste des nouvelles SAS, SARL et SCI de {name}, mise à jour "
+            f"chaque jour d'après le BODACC.", body, 2))
+
+    # -------- une page par secteur (France entière)
+    by_sect = {}
+    for r in all_rows:
+        by_sect.setdefault(r["secteur"], []).append(r)
+    for key, (h1, cible) in SECTEUR_PAGES.items():
+        rows = sorted(by_sect.get(key, []), key=lambda r: (r["date_parution"], r["nom"]), reverse=True)
+        per_dep = {}
+        for r in rows:
+            per_dep[r["departement"]] = per_dep.get(r["departement"], 0) + 1
+        top = "".join(f'<div><a href="../../{dep_path(c)}index.html">{E(DEPARTEMENTS[c])} ({c})</a> <span>{k}</span></div>'
+                      for c, k in sorted(per_dep.items(), key=lambda kv: -kv[1]) if c in DEPARTEMENTS)
+        n = len(rows)
+        s_ = "s" if n != 1 else ""
+        body = f"""<div class="hero"><h1>{E(h1)} : les créations de la semaine</h1>
+<p class="lead">{n} société{s_} de ce secteur créée{s_} en France et publiée{s_} au BODACC {E(period)}.
+Une source de prospection pour les {E(cible)}.</p>
+<a class="btn" href="../../index.html#tarifs">Les recevoir chaque matin pour mon département</a></div>
+<section><h2>Par département</h2><div class="deps">{top or "<p>Aucune cette semaine.</p>"}</div></section>
+<section><h2>Les 150 dernières</h2>{company_rows(rows, 150) if rows else "<p>Aucune société publiée cette semaine.</p>"}</section>
+<div class="cta"><b>Chaque matin, les nouvelles sociétés de votre département, classées par secteur.</b>
+<br><br><a class="btn" href="../../index.html#tarifs">Essayer {config['trial_days']} jours gratuits</a></div>"""
+        write(secteur_path(key) + "index.html", page(
+            config, secteur_path(key), f"{h1} créées cette semaine en France",
+            f"{n} {h1.lower()} créées {period}, département par département, d'après le BODACC. Mise à jour quotidienne.",
+            body, 2))
 
     # -------- pages légales
     L = config["legal"]

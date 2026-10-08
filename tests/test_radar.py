@@ -106,13 +106,20 @@ class Site(unittest.TestCase):
     def test_build(self):
         with tempfile.TemporaryDirectory() as tmp:
             n = site.build(CONFIG, {dt.date(2026, 9, 30): ROWS}, tmp)
-            self.assertEqual(n, 1 + 1 + len(data.DEPARTEMENTS) + 3)
+            self.assertEqual(n, 1 + 1 + len(data.DEPARTEMENTS) + len(site.VILLES) + len(site.SECTEUR_PAGES) + 3)
+            for path in ("villes/bordeaux-33", "secteurs/immobilier"):
+                self.assertTrue(os.path.exists(os.path.join(tmp, path, "index.html")))
             with open(os.path.join(tmp, "creations", "33-gironde", "index.html"), encoding="utf-8") as f:
                 page = f.read()
             self.assertIn("Gironde (33)", page)
             self.assertIn("30 septembre 2026", page)
             self.assertTrue(os.path.exists(os.path.join(tmp, "sitemap.xml")))
             self.assertEqual(site.date_fr("2026-10-01"), "1er octobre 2026")
+
+    def test_city_groups_arrondissements(self):
+        self.assertEqual(site.ville_key("MARSEILLE 8E ARRONDISSEMENT"), "marseille")
+        self.assertEqual(site.ville_key("Marseille 1er Arrondissement"), "marseille")
+        self.assertEqual(site.ville_key("SAINT-ÉTIENNE"), site.slug("Saint-Étienne"))
 
 
 if __name__ == "__main__":

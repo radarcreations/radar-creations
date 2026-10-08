@@ -92,10 +92,10 @@ def cmd_site(config):
     if os.environ.get("GITHUB_ACTIONS") and "COMPLÉTER" in config["legal"].get("address", "").upper():
         print("Mise en ligne bloquée : renseigner legal.address dans config.json.")
         return 1
-    days = data.last_days(8)
+    days = data.last_days(31)  # un mois pour les pages ville, 8 jours pour le reste
     by_day = data.fetch_days(days, cache_dir=os.path.join(ROOT, "out", "cache"))
     n = site.build(config, by_day, os.path.join(ROOT, "dist"))
-    print(f"Site : {n} pages dans dist/ ({sum(len(v) for v in by_day.values())} sociétés sur 8 jours)")
+    print(f"Site : {n} pages dans dist/ ({sum(len(v) for v in by_day.values())} sociétés sur 31 jours)")
     return 0
 
 
