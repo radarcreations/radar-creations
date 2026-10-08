@@ -65,10 +65,12 @@ def page(config, path, title, description, body, depth):
     root = "../" * depth
     brand = config["brand"]
     canonical = (config.get("site_url") or "").rstrip("/") + "/" + path
+    gsv = config.get("google_site_verification")
+    verif = f'<meta name="google-site-verification" content="{E(gsv)}">' if gsv else ""
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{E(title)}</title><meta name="description" content="{E(description)}">
-<link rel="canonical" href="{E(canonical)}"><meta property="og:title" content="{E(title)}">
+<link rel="canonical" href="{E(canonical)}">{verif}<meta property="og:title" content="{E(title)}">
 <meta property="og:description" content="{E(description)}"><meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231f5f8b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='white'/%3E%3C/svg%3E">
 <style>{CSS}</style></head><body>
