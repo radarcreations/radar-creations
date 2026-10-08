@@ -84,12 +84,15 @@ Données publiques issues du BODACC (DILA), réutilisées sous Licence Ouverte 2
 def plans_html(config, root=""):
     out = ['<div class="grid">']
     for i, p in enumerate(config["plans"]):
-        link = p.get("payment_link") or "#tarifs"
+        link = p.get("payment_link")
         best = " best" if i == 1 else ""
+        # Tant que Stripe n'est pas branché, pas de faux bouton de paiement.
+        button = (f'<a class="btn" href="{E(link)}">Essayer {config["trial_days"]} jours gratuits</a>' if link
+                  else '<span class="btn" aria-disabled="true" style="opacity:.6;cursor:default">Ouverture prochaine</span>')
         out.append(f"""<div class="card plan{best}"><h3>{E(p['name'])}</h3>
 <div class="price">{p['price']} €<small> / mois</small></div>
 <ul>{''.join(f'<li>{E(x)}</li>' for x in p['features'])}</ul>
-<a class="btn" href="{E(link)}">Essayer {config['trial_days']} jours gratuits</a></div>""")
+{button}</div>""")
     out.append("</div>")
     out.append(f'<p class="note">Sans engagement : résiliable en un clic depuis chaque e-mail. '
                f'{E(config["legal"].get("vat_note", ""))}</p>')

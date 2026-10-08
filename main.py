@@ -88,6 +88,10 @@ def cmd_send(config, dry_run=False, today=None):
 
 
 def cmd_site(config):
+    # Pas de mise en ligne publique avec des mentions légales incomplètes (LCEN).
+    if os.environ.get("GITHUB_ACTIONS") and "COMPLÉTER" in config["legal"].get("address", "").upper():
+        print("Mise en ligne bloquée : renseigner legal.address dans config.json.")
+        return 1
     days = data.last_days(8)
     by_day = data.fetch_days(days, cache_dir=os.path.join(ROOT, "out", "cache"))
     n = site.build(config, by_day, os.path.join(ROOT, "dist"))
