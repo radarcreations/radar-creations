@@ -1,1 +1,11 @@
-{"dernier_envoi": null, "historique": []}
+{
+ "dernier_envoi": "2026-10-07",
+ "historique": [
+  {
+   "date": "2026-10-07",
+   "societes": 597,
+   "abonnes": 0,
+   "emails": 0
+  }
+ ]
+}
