@@ -5,7 +5,7 @@
   "contact_email": "huet.jonas28@gmail.com",
   "sender_email": "huet.jonas28@gmail.com",
   "reply_to": "",
-  "stripe_portal_url": "",
+  "stripe_portal_url": "https://billing.stripe.com/p/login/test_eVq3co9MGdsL0Fg3ND9Zm00",
   "trial_days": 7,
   "plans": [
     {
