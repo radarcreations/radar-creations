@@ -71,9 +71,12 @@ def from_stripe(key, config):
             sessions = _stripe_get("checkout/sessions", {"subscription": s["id"], "limit": 1}, key)["data"]
             text = ""
             if sessions:
-                for f in sessions[0].get("custom_fields") or []:
-                    if f.get("key", "").startswith("departement"):
-                        text = (f.get("text") or {}).get("value") or (f.get("dropdown") or {}).get("value") or ""
+                fields = sessions[0].get("custom_fields") or []
+                # Stripe génère la clé à partir du libellé : on accepte « departements », « dpartements »…
+                # et, à défaut, le seul champ du formulaire.
+                chosen = [f for f in fields if "part" in (f.get("key") or "").lower()] or fields[:1]
+                for f in chosen:
+                    text = (f.get("text") or {}).get("value") or (f.get("dropdown") or {}).get("value") or ""
                 email = email or (sessions[0].get("customer_details") or {}).get("email")
             max_n = _plan_max(s, config)
             if email:
