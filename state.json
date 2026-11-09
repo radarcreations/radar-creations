@@ -1,5 +1,5 @@
 {
- "dernier_envoi": "2026-11-07",
+ "dernier_envoi": "2026-11-08",
  "historique": [
   {
    "date": "2026-10-07",
@@ -136,6 +136,12 @@
   {
    "date": "2026-11-06",
    "societes": 743,
+   "abonnes": 1,
+   "emails": 0
+  },
+  {
+   "date": "2026-11-08",
+   "societes": 858,
    "abonnes": 1,
    "emails": 0
   }
